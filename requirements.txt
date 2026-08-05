@@ -1,0 +1,84 @@
+# ==========================
+# sAI V1 - Python Dependencies
+# ==========================
+
+# AI & LLM
+openai>=1.99.0
+ollama>=0.5.0
+transformers>=4.55.0
+torch>=2.7.0
+accelerate>=1.9.0
+sentence-transformers>=5.0.0
+tiktoken>=0.9.0
+
+# Vector Database
+chromadb>=1.0.15
+
+# Speech Recognition
+SpeechRecognition>=3.14.3
+#pyaudio>=0.2.14
+openai-whisper>=20250625
+
+# Text to Speech
+edge-tts>=7.2.3
+pyttsx3>=2.99
+
+# Vision
+opencv-python>=4.12.0.88
+Pillow>=11.3.0
+
+# OCR
+easyocr>=1.7.2
+
+# Automation
+pyautogui>=0.9.54
+keyboard>=0.13.5
+mouse>=0.7.1
+psutil>=7.0.0
+
+# Web
+requests>=2.32.4
+httpx>=0.28.1
+beautifulsoup4>=4.13.4
+duckduckgo-search>=8.1.1
+
+# FastAPI Backend
+fastapi>=0.116.1
+uvicorn>=0.35.0
+python-multipart>=0.0.20
+
+# Desktop UI
+customtkinter>=5.2.2
+
+# Environment
+python-dotenv>=1.1.1
+
+# Utilities
+numpy>=2.2.6
+pandas>=2.3.1
+tqdm>=4.67.1
+
+# Audio
+sounddevice>=0.5.2
+soundfile>=0.13.1
+
+# Image Processing
+scikit-image>=0.25.2
+
+# File Handling
+PyPDF2>=3.0.1
+python-docx>=1.2.0
+openpyxl>=3.1.5
+python-pptx>=1.0.2
+
+# Scheduling
+schedule>=1.2.2
+
+# Time
+python-dateutil>=2.9.0.post0
+
+# Logging
+rich>=14.1.0
+
+# Packaging
+pyinstaller>=6.15.0

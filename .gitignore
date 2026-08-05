@@ -9,3 +9,6 @@ __pycache__/
 .idea/
 data/chats/
 data/memory/
+data/cache/
+data/logs/
+data/temp/
