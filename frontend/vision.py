@@ -8,22 +8,11 @@ Camera interface for sAI.
 
 from __future__ import annotations
 
-import sys
 import threading
-from pathlib import Path
 
 import customtkinter as ctk
 
-# ---------------------------------------------------------
-# Backend Import
-# ---------------------------------------------------------
-
-BACKEND = Path(__file__).resolve().parent.parent / "backend"
-
-if str(BACKEND) not in sys.path:
-    sys.path.append(str(BACKEND))
-
-from vision import Vision
+from backend.vision import Vision
 
 
 class VisionPage(ctk.CTkFrame):
@@ -33,6 +22,8 @@ class VisionPage(ctk.CTkFrame):
         super().__init__(master)
 
         self.vision = Vision()
+
+        self.last_image = None
 
         self.build_ui()
 
@@ -93,11 +84,9 @@ class VisionPage(ctk.CTkFrame):
             command=self.ocr_last,
         ).grid(row=0, column=2, padx=10)
 
-        self.last_image = None
-
     # --------------------------------------------------
 
-    def log(self, message):
+    def log(self, message: str):
 
         self.output.insert("end", message + "\n")
 
@@ -109,11 +98,11 @@ class VisionPage(ctk.CTkFrame):
 
         try:
 
-            path = self.vision.take_photo()
+            image = self.vision.take_photo()
 
-            self.last_image = path
+            self.last_image = image
 
-            self.log(f"Saved:\n{path}")
+            self.log(f"Image saved:\n{image}")
 
         except Exception as e:
 
@@ -134,7 +123,7 @@ class VisionPage(ctk.CTkFrame):
 
         if self.last_image is None:
 
-            self.log("Take a photo first.")
+            self.log("No image available.")
 
             return
 
@@ -144,13 +133,19 @@ class VisionPage(ctk.CTkFrame):
                 self.last_image,
             )
 
-            self.log("\nOCR Result\n")
+            self.log("\n===== OCR RESULT =====\n")
 
             self.log(text)
 
         except Exception as e:
 
             self.log(str(e))
+
+    # --------------------------------------------------
+
+    def refresh(self):
+
+        pass
 
 
 if __name__ == "__main__":
@@ -159,9 +154,8 @@ if __name__ == "__main__":
 
     app.geometry("900x650")
 
-    VisionPage(app).pack(
-        fill="both",
-        expand=True,
-    )
+    page = VisionPage(app)
+
+    page.pack(fill="both", expand=True)
 
     app.mainloop()
