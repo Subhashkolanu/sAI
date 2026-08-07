@@ -1,29 +1,22 @@
 """
 =========================================================
-sAI V1 - Voice Page
+sAI V1 - Voice Assistant
 =========================================================
-Voice interface for sAI.
+Voice Control Page
+- Speech Recognition
+- AI Response
+- Voice Output
 =========================================================
 """
 
 from __future__ import annotations
 
-import sys
 import threading
-from pathlib import Path
 
 import customtkinter as ctk
 
-# ---------------------------------------------------------
-# Backend Import
-# ---------------------------------------------------------
-
-BACKEND = Path(__file__).resolve().parent.parent / "backend"
-
-if str(BACKEND) not in sys.path:
-    sys.path.append(str(BACKEND))
-
-from speech import SpeechEngine
+from backend.assistant import Assistant
+from backend.speech import SpeechEngine
 
 
 class VoicePage(ctk.CTkFrame):
@@ -32,6 +25,7 @@ class VoicePage(ctk.CTkFrame):
 
         super().__init__(master)
 
+        self.assistant = Assistant()
         self.engine = SpeechEngine()
 
         self.listening = False
@@ -47,21 +41,19 @@ class VoicePage(ctk.CTkFrame):
             text="Voice Assistant",
             font=("Segoe UI", 28, "bold"),
         )
-
         title.pack(pady=(20, 10))
 
         self.status = ctk.CTkLabel(
             self,
-            text="Status : Idle",
-            font=("Segoe UI", 15),
+            text="Status : Ready",
+            font=("Segoe UI", 16),
         )
-
-        self.status.pack(pady=5)
+        self.status.pack()
 
         self.output = ctk.CTkTextbox(
             self,
-            height=350,
             wrap="word",
+            height=420,
         )
 
         self.output.pack(
@@ -71,59 +63,28 @@ class VoicePage(ctk.CTkFrame):
             pady=20,
         )
 
-        button_frame = ctk.CTkFrame(self)
+        self.output.configure(state="disabled")
 
-        button_frame.pack(pady=10)
-
-        self.listen_btn = ctk.CTkButton(
-            button_frame,
+        self.listen_button = ctk.CTkButton(
+            self,
             text="🎤 Start Listening",
-            width=180,
+            width=220,
             command=self.start_listening,
         )
 
-        self.listen_btn.grid(row=0, column=0, padx=10)
-
-        self.test_btn = ctk.CTkButton(
-            button_frame,
-            text="🔊 Test Voice",
-            width=150,
-            command=self.test_voice,
-        )
-
-        self.test_btn.grid(row=0, column=1, padx=10)
+        self.listen_button.pack(pady=10)
 
     # --------------------------------------------------
 
-    def log(self, text):
+    def write(self, text):
 
-        self.output.insert("end", text + "\n")
+        self.output.configure(state="normal")
+
+        self.output.insert("end", text + "\n\n")
+
+        self.output.configure(state="disabled")
 
         self.output.see("end")
-
-    # --------------------------------------------------
-
-    def listen(self):
-
-        self.status.configure(text="Status : Listening...")
-
-        self.log("Listening...")
-
-        text = self.engine.listen()
-
-        if text:
-
-            self.log(f"You : {text}")
-
-            self.engine.speak(text)
-
-        else:
-
-            self.log("No speech detected.")
-
-        self.status.configure(text="Status : Idle")
-
-        self.listening = False
 
     # --------------------------------------------------
 
@@ -134,20 +95,80 @@ class VoicePage(ctk.CTkFrame):
 
         self.listening = True
 
+        self.listen_button.configure(state="disabled")
+
+        self.status.configure(
+            text="Listening..."
+        )
+
         threading.Thread(
-            target=self.listen,
+            target=self.voice_loop,
             daemon=True,
         ).start()
 
     # --------------------------------------------------
 
-    def test_voice(self):
+    def voice_loop(self):
 
-        self.engine.speak(
-            "Hello. Voice engine is working correctly."
+        try:
+
+            spoken = self.engine.listen()
+
+            if not spoken:
+
+                self.after(
+                    0,
+                    lambda: self.finish(
+                        "No speech detected."
+                    )
+                )
+                return
+
+            self.after(
+                0,
+                lambda: self.write(
+                    f"You : {spoken}"
+                )
+            )
+
+            response = self.assistant.reply(spoken)
+
+            self.engine.speak(response)
+
+            self.after(
+                0,
+                lambda: self.write(
+                    f"sAI : {response}"
+                )
+            )
+
+            self.after(
+                0,
+                lambda: self.finish(
+                    "Ready"
+                )
+            )
+
+        except Exception as e:
+
+            self.after(
+                0,
+                lambda: self.finish(str(e))
+            )
+
+    # --------------------------------------------------
+
+    def finish(self, status):
+
+        self.status.configure(
+            text=f"Status : {status}"
         )
 
-        self.log("Voice test completed.")
+        self.listen_button.configure(
+            state="normal"
+        )
+
+        self.listening = False
 
 
 if __name__ == "__main__":

@@ -2,16 +2,16 @@
 =========================================================
 sAI V1 - Core Assistant
 =========================================================
-AI + Desktop Control + Personal Memory
+AI + Desktop + Personal Memory + File Search
 =========================================================
 """
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 
 from backend.desktop import DesktopController
+from backend.file_search import FileSearch
 from backend.llm import LLM
 from backend.memory import Memory
 from backend.profile_memory import ProfileMemory
@@ -24,6 +24,7 @@ class Assistant:
         self.llm = LLM()
         self.memory = Memory()
         self.profile = ProfileMemory()
+        self.search = FileSearch()
 
         self.chat_history = []
 
@@ -62,107 +63,98 @@ class Assistant:
 
         text = prompt.lower().strip()
 
-        patterns = [
-            ("my name is", "name"),
-            ("my favourite language is", "favourite_language"),
-            ("my favorite language is", "favourite_language"),
-            ("my college is", "college"),
-            ("my city is", "city"),
-        ]
+        memory_patterns = {
+            "my name is": "name",
+            "my favourite language is": "favourite_language",
+            "my favorite language is": "favourite_language",
+            "my favourite coding language is": "favourite_language",
+            "my favorite coding language is": "favourite_language",
+            "my college is": "college",
+            "i use": "device",
+        }
 
-        for phrase, key in patterns:
+        for trigger, key in memory_patterns.items():
 
-            if phrase in text:
+            if trigger in text:
 
-                value = prompt.split(phrase, 1)[1].strip()
+                value = prompt[prompt.lower().find(trigger) + len(trigger):].strip()
 
                 self.profile.remember(key, value)
 
-                return f"I'll remember that. Your {key.replace('_',' ')} is {value}."
+                return f"I'll remember that."
 
         questions = {
             "what is my name": "name",
             "what's my name": "name",
+            "what is my favourite coding language": "favourite_language",
+            "what is my favorite coding language": "favourite_language",
             "what is my favourite language": "favourite_language",
-            "what's my favourite language": "favourite_language",
             "what is my college": "college",
-            "what's my college": "college",
-            "what is my city": "city",
-            "what's my city": "city",
+            "which laptop do i use": "device",
+            "what laptop do i use": "device",
         }
 
-        for q, key in questions.items():
+        for question, key in questions.items():
 
-            if text == q:
+            if question in text:
 
                 value = self.profile.recall(key)
 
                 if value:
+                    return value
 
-                    return f"Your {key.replace('_',' ')} is {value}."
-
-                return f"I don't know your {key.replace('_',' ')} yet."
+                return "I don't know that yet."
 
         return None
 
     # --------------------------------------------------
-    # DESKTOP COMMANDS
+    # FILE SEARCH
     # --------------------------------------------------
 
-    def desktop_commands(self, prompt):
+    def file_search(self, prompt):
+
+        text = prompt.lower().strip()
+
+        if not text.startswith("find "):
+            return None
+
+        keyword = prompt[5:].strip()
+
+        results = self.search.search(keyword)
+
+        if not results:
+            return "No matching files found."
+
+        message = "Found files:\n\n"
+
+        for file in results[:10]:
+            message += f"• {file}\n"
+
+        return message
+
+    # --------------------------------------------------
+    # DESKTOP
+    # --------------------------------------------------
+
+    def desktop(self, prompt):
 
         text = prompt.lower()
 
-        apps = [
-            "chrome",
-            "edge",
-            "vscode",
-            "notepad",
-            "calculator",
-            "paint",
-            "explorer",
-        ]
+        if "open chrome" in text:
+            DesktopController.open_app("chrome")
+            return "Opening Chrome..."
 
-        for app in apps:
+        if "open vscode" in text or "open vs code" in text:
+            DesktopController.open_app("vscode")
+            return "Opening VS Code..."
 
-            if f"open {app}" in text:
+        if "open github" in text:
+            DesktopController.open_website("https://github.com")
+            return "Opening GitHub..."
 
-                if DesktopController.open_app(app):
-
-                    return f"Opening {app.title()}..."
-
-                return f"{app.title()} not found."
-
-        folders = [
-            "desktop",
-            "downloads",
-            "documents",
-            "pictures",
-            "videos",
-            "music",
-        ]
-
-        for folder in folders:
-
-            if f"open {folder}" in text:
-
-                DesktopController.open_folder(folder)
-
-                return f"Opening {folder.title()}..."
-
-        websites = {
-            "github": "https://github.com",
-            "youtube": "https://youtube.com",
-            "google": "https://google.com",
-        }
-
-        for site, url in websites.items():
-
-            if f"open {site}" in text:
-
-                DesktopController.open_website(url)
-
-                return f"Opening {site.title()}..."
+        if "open youtube" in text:
+            DesktopController.open_website("https://youtube.com")
+            return "Opening YouTube..."
 
         return None
 
@@ -172,43 +164,27 @@ class Assistant:
 
         prompt = prompt.strip()
 
-        if not prompt:
-            return "Please enter a message."
-
         self.memory.add("user", prompt)
-
         self.add_history("user", prompt)
 
-        result = self.personal_memory(prompt)
+        for handler in (
+            self.personal_memory,
+            self.file_search,
+            self.desktop,
+        ):
 
-        if result:
+            result = handler(prompt)
 
-            self.memory.add("assistant", result)
+            if result:
 
-            self.add_history("assistant", result)
+                self.memory.add("assistant", result)
+                self.add_history("assistant", result)
 
-            return result
+                return result
 
-        result = self.desktop_commands(prompt)
-
-        if result:
-
-            self.memory.add("assistant", result)
-
-            self.add_history("assistant", result)
-
-            return result
-
-        try:
-
-            response = self.llm.generate(prompt)
-
-        except Exception as e:
-
-            response = str(e)
+        response = self.llm.generate(prompt)
 
         self.memory.add("assistant", response)
-
         self.add_history("assistant", response)
 
         return response
