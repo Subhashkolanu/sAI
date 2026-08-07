@@ -90,7 +90,7 @@ DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "ollama")
 
 OLLAMA_MODEL = os.getenv(
     "OLLAMA_MODEL",
-    "qwen2.5:7b",
+    "qwen2.5:3b",
 )
 
 OPENAI_MODEL = os.getenv(

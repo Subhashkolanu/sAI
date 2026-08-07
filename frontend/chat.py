@@ -2,15 +2,20 @@
 =========================================================
 sAI V1 - Chat Panel
 =========================================================
-Chat interface component for the desktop GUI.
+Responsive Chat UI
+- Background AI Thread
+- Read-only Chat
+- Thinking Indicator
 =========================================================
 """
 
 from __future__ import annotations
 
+import threading
+
 import customtkinter as ctk
 
-from assistant import Assistant
+from backend.assistant import Assistant
 
 
 class ChatPanel(ctk.CTkFrame):
@@ -45,6 +50,8 @@ class ChatPanel(ctk.CTkFrame):
             pady=10,
         )
 
+        self.chat_box.configure(state="disabled")
+
         self.input_box = ctk.CTkEntry(
             self,
             placeholder_text="Type your message...",
@@ -75,19 +82,38 @@ class ChatPanel(ctk.CTkFrame):
             pady=(0, 10),
         )
 
+        self.status = ctk.CTkLabel(
+            self,
+            text="Ready",
+            anchor="w",
+        )
+
+        self.status.grid(
+            row=2,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            padx=10,
+            pady=(0, 8),
+        )
+
         self.display_message(
             "sAI",
-            "Welcome to sAI V1!\nHow can I help you today?",
+            "Welcome sAI\nHow can I help you today?"
         )
 
     # --------------------------------------------------
 
-    def display_message(self, sender: str, message: str):
+    def display_message(self, sender, message):
+
+        self.chat_box.configure(state="normal")
 
         self.chat_box.insert(
             "end",
-            f"{sender}: {message}\n\n",
+            f"{sender}: {message}\n\n"
         )
+
+        self.chat_box.configure(state="disabled")
 
         self.chat_box.see("end")
 
@@ -104,7 +130,23 @@ class ChatPanel(ctk.CTkFrame):
 
         self.input_box.delete(0, "end")
 
-        self.update()
+        self.input_box.configure(state="disabled")
+
+        self.send_button.configure(state="disabled")
+
+        self.status.configure(
+            text="sAI is thinking..."
+        )
+
+        threading.Thread(
+            target=self.generate_response,
+            args=(prompt,),
+            daemon=True,
+        ).start()
+
+    # --------------------------------------------------
+
+    def generate_response(self, prompt):
 
         try:
 
@@ -114,19 +156,55 @@ class ChatPanel(ctk.CTkFrame):
 
             response = f"Error: {e}"
 
-        self.display_message("sAI", response)
+        self.after(
+            0,
+            lambda: self.finish_response(response)
+        )
+
+    # --------------------------------------------------
+
+    def finish_response(self, response):
+
+        self.display_message(
+            "sAI",
+            response,
+        )
+
+        self.input_box.configure(
+            state="normal"
+        )
+
+        self.send_button.configure(
+            state="normal"
+        )
+
+        self.status.configure(
+            text="Ready"
+        )
+
+        self.input_box.focus()
 
     # --------------------------------------------------
 
     def clear(self):
 
-        self.chat_box.delete("1.0", "end")
+        self.chat_box.configure(state="normal")
+
+        self.chat_box.delete(
+            "1.0",
+            "end",
+        )
+
+        self.chat_box.configure(state="disabled")
 
     # --------------------------------------------------
 
-    def insert_system_message(self, message: str):
+    def insert_system_message(self, message):
 
-        self.display_message("System", message)
+        self.display_message(
+            "System",
+            message,
+        )
 
 
 if __name__ == "__main__":
@@ -135,8 +213,9 @@ if __name__ == "__main__":
 
     app.geometry("900x600")
 
-    panel = ChatPanel(app)
-
-    panel.pack(fill="both", expand=True)
+    ChatPanel(app).pack(
+        fill="both",
+        expand=True,
+    )
 
     app.mainloop()

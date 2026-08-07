@@ -3,6 +3,7 @@
 sAI V1 - Main Entry Point
 =========================================================
 Starts the assistant and launches the command interface.
+=========================================================
 """
 
 from rich.console import Console
@@ -10,7 +11,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich import print
 
-from config import (
+from backend.config import (
     ASSISTANT_NAME,
     VERSION,
     BANNER,
@@ -66,7 +67,7 @@ Features:
     def process(self, command: str):
         cmd = command.strip().lower()
 
-        if cmd == "":
+        if not cmd:
             return
 
         if cmd == "help":
@@ -79,6 +80,7 @@ Features:
 
         if cmd == "clear":
             console.clear()
+            print(BANNER)
             self.banner()
             return
 
@@ -86,7 +88,10 @@ Features:
             self.running = False
             return
 
-        print(f"\n[cyan]{ASSISTANT_NAME}:[/cyan] I received: [yellow]{command}[/yellow]\n")
+        print(
+            f"\n[cyan]{ASSISTANT_NAME}:[/cyan] "
+            f"I received: [yellow]{command}[/yellow]\n"
+        )
 
     def run(self):
         console.clear()
@@ -107,10 +112,15 @@ Features:
                 break
 
             except Exception as e:
-                print(f"[red]{e}[/red]")
+                console.print(f"[red]{e}[/red]")
 
         print("\nGoodbye.\n")
 
 
+def main():
+    app = SAI()
+    app.run()
+
+
 if __name__ == "__main__":
-    SAI().run()
+    main()
