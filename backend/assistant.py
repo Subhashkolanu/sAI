@@ -8,6 +8,7 @@ AI + Desktop + Personal Memory + File Search
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from backend.desktop import DesktopController
@@ -29,8 +30,11 @@ class Assistant:
         self.chat_history = []
 
     # --------------------------------------------------
+    # HISTORY
+    # --------------------------------------------------
 
     def timestamp(self):
+
         return datetime.now().strftime("%H:%M:%S")
 
     # --------------------------------------------------
@@ -48,11 +52,13 @@ class Assistant:
     # --------------------------------------------------
 
     def history(self):
+
         return self.chat_history
 
     # --------------------------------------------------
 
     def clear_history(self):
+
         self.chat_history.clear()
 
     # --------------------------------------------------
@@ -63,6 +69,10 @@ class Assistant:
 
         text = prompt.lower().strip()
 
+        # ----------------------------------------------
+        # Remember information
+        # ----------------------------------------------
+
         memory_patterns = {
             "my name is": "name",
             "my favourite language is": "favourite_language",
@@ -70,6 +80,7 @@ class Assistant:
             "my favourite coding language is": "favourite_language",
             "my favorite coding language is": "favourite_language",
             "my college is": "college",
+            "my city is": "city",
             "i use": "device",
         }
 
@@ -77,26 +88,53 @@ class Assistant:
 
             if trigger in text:
 
-                value = prompt[prompt.lower().find(trigger) + len(trigger):].strip()
+                position = text.find(trigger)
 
+                value = prompt[
+                    position + len(trigger):
+                ].strip()
+
+                if not value:
+                    return None
+
+                # Don't treat arbitrary "I use..." sentences
+                # as a device unless something follows it.
                 self.profile.remember(key, value)
 
-                return f"I'll remember that."
+                return "I'll remember that."
+
+        # ----------------------------------------------
+        # Questions
+        # ----------------------------------------------
 
         questions = {
             "what is my name": "name",
             "what's my name": "name",
-            "what is my favourite coding language": "favourite_language",
-            "what is my favorite coding language": "favourite_language",
-            "what is my favourite language": "favourite_language",
+            "what is my favourite coding language":
+                "favourite_language",
+            "what is my favorite coding language":
+                "favourite_language",
+            "what is my favourite language":
+                "favourite_language",
+            "what is my favorite language":
+                "favourite_language",
+            "what's my favourite language":
+                "favourite_language",
+            "what's my favorite language":
+                "favourite_language",
             "what is my college": "college",
+            "what's my college": "college",
+            "what is my city": "city",
+            "what's my city": "city",
             "which laptop do i use": "device",
             "what laptop do i use": "device",
+            "which device do i use": "device",
+            "what device do i use": "device",
         }
 
         for question, key in questions.items():
 
-            if question in text:
+            if text == question:
 
                 value = self.profile.recall(key)
 
@@ -116,56 +154,199 @@ class Assistant:
         text = prompt.lower().strip()
 
         if not text.startswith("find "):
+
             return None
 
         keyword = prompt[5:].strip()
 
-        results = self.search.search(keyword)
+        if not keyword:
+
+            return "Please specify what you want me to find."
+
+        try:
+
+            results = self.search.search(keyword)
+
+        except Exception as e:
+
+            return f"File search error: {e}"
 
         if not results:
+
             return "No matching files found."
 
         message = "Found files:\n\n"
 
         for file in results[:10]:
+
             message += f"• {file}\n"
 
-        return message
+        return message.rstrip()
 
     # --------------------------------------------------
-    # DESKTOP
+    # DESKTOP CONTROL
     # --------------------------------------------------
 
     def desktop(self, prompt):
 
-        text = prompt.lower()
+        text = prompt.lower().strip()
 
-        if "open chrome" in text:
-            DesktopController.open_app("chrome")
-            return "Opening Chrome..."
+        # ----------------------------------------------
+        # Websites
+        # ----------------------------------------------
 
-        if "open vscode" in text or "open vs code" in text:
-            DesktopController.open_app("vscode")
-            return "Opening VS Code..."
+        websites = {
 
-        if "open github" in text:
-            DesktopController.open_website("https://github.com")
-            return "Opening GitHub..."
+            "github": "https://github.com",
 
-        if "open youtube" in text:
-            DesktopController.open_website("https://youtube.com")
-            return "Opening YouTube..."
+            "youtube": "https://youtube.com",
+
+            "google": "https://google.com",
+
+        }
+
+        for site, url in websites.items():
+
+            patterns = (
+                f"open {site}",
+                f"launch {site}",
+                f"start {site}",
+                f"go to {site}",
+            )
+
+            if any(pattern in text for pattern in patterns):
+
+                if DesktopController.open_website(url):
+
+                    return f"Opening {site.title()}..."
+
+                return f"Unable to open {site.title()}."
+
+        # ----------------------------------------------
+        # Folders
+        # ----------------------------------------------
+
+        folders = (
+            "desktop",
+            "downloads",
+            "documents",
+            "pictures",
+            "videos",
+            "music",
+        )
+
+        for folder in folders:
+
+            patterns = (
+                f"open {folder}",
+                f"launch {folder}",
+                f"open my {folder}",
+                f"open the {folder}",
+            )
+
+            if any(pattern in text for pattern in patterns):
+
+                if DesktopController.open_folder(folder):
+
+                    return f"Opening {folder.title()}..."
+
+                return f"Unable to open {folder.title()}."
+
+        # ----------------------------------------------
+        # Drives
+        # ----------------------------------------------
+
+        drive_match = re.search(
+            r"\b(?:open|launch)\s+([a-zA-Z])\s*drive\b",
+            text,
+        )
+
+        if drive_match:
+
+            letter = drive_match.group(1)
+
+            if DesktopController.open_drive(letter):
+
+                return f"Opening {letter.upper()}: drive..."
+
+            return f"{letter.upper()}: drive not found."
+
+        # ----------------------------------------------
+        # Applications
+        # ----------------------------------------------
+
+        available_apps = DesktopController.available_apps()
+
+        # Check longer names first.
+        available_apps = sorted(
+            available_apps,
+            key=len,
+            reverse=True,
+        )
+
+        for app in available_apps:
+
+            aliases = [
+                app,
+            ]
+
+            for alias, target in DesktopController.ALIASES.items():
+
+                if target == app:
+
+                    aliases.append(alias)
+
+            for alias in aliases:
+
+                patterns = (
+                    f"open {alias}",
+                    f"launch {alias}",
+                    f"start {alias}",
+                    f"run {alias}",
+                )
+
+                if any(pattern in text for pattern in patterns):
+
+                    if DesktopController.open_app(app):
+
+                        return f"Opening {app.title()}..."
+
+                    return (
+                        f"{app.title()} is not installed "
+                        "or could not be opened."
+                    )
 
         return None
 
+    # --------------------------------------------------
+    # MAIN RESPONSE ROUTER
     # --------------------------------------------------
 
     def reply(self, prompt):
 
         prompt = prompt.strip()
 
-        self.memory.add("user", prompt)
-        self.add_history("user", prompt)
+        if not prompt:
+
+            return "Please enter a message."
+
+        # ----------------------------------------------
+        # Store user message
+        # ----------------------------------------------
+
+        self.memory.add(
+            "user",
+            prompt,
+        )
+
+        self.add_history(
+            "user",
+            prompt,
+        )
+
+        # ----------------------------------------------
+        # Built-in handlers
+        # ----------------------------------------------
 
         for handler in (
             self.personal_memory,
@@ -173,18 +354,73 @@ class Assistant:
             self.desktop,
         ):
 
-            result = handler(prompt)
+            try:
+
+                result = handler(prompt)
+
+            except Exception as e:
+
+                result = f"Error: {e}"
 
             if result:
 
-                self.memory.add("assistant", result)
-                self.add_history("assistant", result)
+                self.memory.add(
+                    "assistant",
+                    result,
+                )
+
+                self.add_history(
+                    "assistant",
+                    result,
+                )
 
                 return result
 
-        response = self.llm.generate(prompt)
+        # ----------------------------------------------
+        # LLM
+        # ----------------------------------------------
 
-        self.memory.add("assistant", response)
-        self.add_history("assistant", response)
+        try:
+
+            response = self.llm.generate(prompt)
+
+        except Exception as e:
+
+            response = f"Error: {e}"
+
+        self.memory.add(
+            "assistant",
+            response,
+        )
+
+        self.add_history(
+            "assistant",
+            response,
+        )
 
         return response
+
+
+# ------------------------------------------------------
+# DIRECT TEST
+# ------------------------------------------------------
+
+if __name__ == "__main__":
+
+    assistant = Assistant()
+
+    print("sAI Assistant")
+    print("Type 'exit' to quit.")
+    print()
+
+    while True:
+
+        user = input("You: ").strip()
+
+        if user.lower() == "exit":
+
+            break
+
+        response = assistant.reply(user)
+
+        print(f"\nsAI: {response}\n")
