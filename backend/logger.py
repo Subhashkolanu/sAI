@@ -14,7 +14,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from config import LOG_DIR
+from backend.config import LOG_DIR
 
 console = Console()
 

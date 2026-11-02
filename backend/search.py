@@ -17,7 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 
-from config import SEARCH_RESULTS
+from backend.config import SEARCH_RESULTS
 
 
 class SearchEngine:

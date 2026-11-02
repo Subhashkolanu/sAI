@@ -20,7 +20,7 @@ import sqlite3
 from pathlib import Path
 from threading import Lock
 
-from config import DATA_DIR
+from backend.config import DATA_DIR
 
 
 class Database:

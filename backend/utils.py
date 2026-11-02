@@ -18,7 +18,7 @@ from typing import Any
 
 from rich.console import Console
 
-from config import LOG_FILE
+from backend.config import LOG_FILE
 
 console = Console()
 

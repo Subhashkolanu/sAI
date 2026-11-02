@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Callable
 
-from assistant import Assistant
+from backend.assistant import Assistant
 
 
 class CommandManager:

@@ -20,7 +20,7 @@ import cv2
 import easyocr
 from PIL import Image
 
-from config import CAMERA_INDEX, UPLOAD_DIR
+from backend.config import CAMERA_INDEX, UPLOAD_DIR
 
 
 class Vision:

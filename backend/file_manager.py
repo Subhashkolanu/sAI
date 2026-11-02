@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List
 
-from config import (
+from backend.config import (
     DATA_DIR,
     CACHE_DIR,
     MEMORY_DIR,

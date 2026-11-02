@@ -11,6 +11,8 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich import print
 
+from backend.assistant import Assistant
+from backend.commands import CommandManager
 from backend.config import (
     ASSISTANT_NAME,
     VERSION,
@@ -23,6 +25,8 @@ console = Console()
 class SAI:
     def __init__(self):
         self.running = True
+        self.assistant = Assistant()
+        self.commands = CommandManager(self.assistant)
 
     def banner(self):
         console.print(
@@ -70,28 +74,23 @@ Features:
         if not cmd:
             return
 
-        if cmd == "help":
-            self.help()
-            return
+        result = self.commands.execute(command)
 
-        if cmd == "about":
-            self.about()
-            return
-
-        if cmd == "clear":
-            console.clear()
-            print(BANNER)
-            self.banner()
-            return
-
-        if cmd == "exit":
+        if result == "__EXIT__":
             self.running = False
             return
 
-        print(
-            f"\n[cyan]{ASSISTANT_NAME}:[/cyan] "
-            f"I received: [yellow]{command}[/yellow]\n"
-        )
+        if result is not None:
+            if cmd == "clear":
+                console.clear()
+                print(BANNER)
+                self.banner()
+
+            print(f"\n[cyan]{ASSISTANT_NAME}:[/cyan] {result}\n")
+            return
+
+        response = self.assistant.reply(command)
+        print(f"\n[cyan]{ASSISTANT_NAME}:[/cyan] {response}\n")
 
     def run(self):
         console.clear()

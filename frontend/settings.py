@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from config import (
+from backend.config import (
     ASSISTANT_NAME,
     VERSION,
     DEFAULT_PROVIDER,
