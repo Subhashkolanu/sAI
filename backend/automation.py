@@ -19,7 +19,7 @@ from typing import Callable, Dict, List
 
 import schedule
 
-from config import CHECK_INTERVAL
+from backend.config import CHECK_INTERVAL
 
 
 class AutomationEngine:

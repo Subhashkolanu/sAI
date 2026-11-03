@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from backend.search import SearchEngine
+from backend.memory import Memory
 
 
 class SearchPage(ctk.CTkFrame):
@@ -18,7 +18,7 @@ class SearchPage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
 
-        self.engine = SearchEngine()
+        self.memory = Memory()
 
         title = ctk.CTkLabel(
             self,
@@ -56,7 +56,7 @@ class SearchPage(ctk.CTkFrame):
         if not keyword:
             return
 
-        data = self.engine.search(keyword)
+        data = self.memory.search(keyword)
 
         if not data:
             self.results.insert(

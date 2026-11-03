@@ -11,12 +11,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from backend.config import DATA_DIR
+
 
 class ProfileMemory:
 
-    def __init__(self, filename="data/profile.json"):
+    def __init__(self, filename: str | Path | None = None):
 
-        self.path = Path(filename)
+        self.path = Path(filename) if filename is not None else DATA_DIR / "profile.json"
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -12,12 +12,15 @@ Features
 from __future__ import annotations
 
 from typing import List, Dict
+import ipaddress
+import socket
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 
-from config import SEARCH_RESULTS
+from backend.config import SEARCH_RESULTS
 
 
 class SearchEngine:
@@ -46,6 +49,14 @@ class SearchEngine:
     # --------------------------------------------------
 
     def fetch_page(self, url: str) -> str:
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("Only public HTTP(S) URLs are supported.")
+
+        addresses = socket.getaddrinfo(parsed.hostname, None)
+        if any(not ipaddress.ip_address(address[4][0]).is_global for address in addresses):
+            raise ValueError("Private and local network URLs are not allowed.")
+
         headers = {
             "User-Agent": "sAI/1.0"
         }
@@ -54,6 +65,7 @@ class SearchEngine:
             url,
             headers=headers,
             timeout=self.timeout,
+            allow_redirects=False,
         )
 
         response.raise_for_status()

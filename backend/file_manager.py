@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List
 
-from config import (
+from backend.config import (
     DATA_DIR,
     CACHE_DIR,
     MEMORY_DIR,
@@ -24,12 +24,30 @@ from config import (
 
 class FileManager:
 
+    ALLOWED_ROOTS = (
+        DATA_DIR,
+        CACHE_DIR,
+        MEMORY_DIR,
+        TEMP_DIR,
+        UPLOAD_DIR,
+    )
+
+    @classmethod
+    def _validated_path(cls, path: str | Path) -> Path:
+        resolved = Path(path).resolve()
+        roots = [root.resolve() for root in cls.ALLOWED_ROOTS]
+
+        if not any(resolved == root or root in resolved.parents for root in roots):
+            raise PermissionError("File operations are limited to sAI data folders.")
+
+        return resolved
+
     # --------------------------------------------------
 
     @staticmethod
     def ensure(path: str | Path):
 
-        path = Path(path)
+        path = FileManager._validated_path(path)
 
         path.mkdir(parents=True, exist_ok=True)
 
@@ -40,14 +58,14 @@ class FileManager:
     @staticmethod
     def exists(path: str | Path):
 
-        return Path(path).exists()
+        return FileManager._validated_path(path).exists()
 
     # --------------------------------------------------
 
     @staticmethod
     def create_file(path: str | Path, content: str = ""):
 
-        path = Path(path)
+        path = FileManager._validated_path(path)
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -60,29 +78,32 @@ class FileManager:
     @staticmethod
     def read(path: str | Path):
 
-        return Path(path).read_text(encoding="utf-8")
+        return FileManager._validated_path(path).read_text(encoding="utf-8")
 
     # --------------------------------------------------
 
     @staticmethod
     def write(path: str | Path, content: str):
 
-        Path(path).write_text(content, encoding="utf-8")
+        FileManager._validated_path(path).write_text(content, encoding="utf-8")
 
     # --------------------------------------------------
 
     @staticmethod
     def append(path: str | Path, content: str):
 
-        with open(path, "a", encoding="utf-8") as file:
+        with open(FileManager._validated_path(path), "a", encoding="utf-8") as file:
             file.write(content)
 
     # --------------------------------------------------
 
     @staticmethod
-    def delete(path: str | Path):
+    def delete(path: str | Path, *, approved: bool = False):
 
-        path = Path(path)
+        if not approved:
+            raise PermissionError("Deleting files requires explicit approval.")
+
+        path = FileManager._validated_path(path)
 
         if path.exists():
 
@@ -97,28 +118,36 @@ class FileManager:
     @staticmethod
     def copy(source, destination):
 
-        shutil.copy2(source, destination)
+        shutil.copy2(
+            FileManager._validated_path(source),
+            FileManager._validated_path(destination),
+        )
 
     # --------------------------------------------------
 
     @staticmethod
     def move(source, destination):
 
-        shutil.move(source, destination)
+        shutil.move(
+            FileManager._validated_path(source),
+            FileManager._validated_path(destination),
+        )
 
     # --------------------------------------------------
 
     @staticmethod
     def rename(source, destination):
 
-        Path(source).rename(destination)
+        FileManager._validated_path(source).rename(
+            FileManager._validated_path(destination)
+        )
 
     # --------------------------------------------------
 
     @staticmethod
     def list_files(folder) -> List[Path]:
 
-        folder = Path(folder)
+        folder = FileManager._validated_path(folder)
 
         if not folder.exists():
             return []
@@ -136,7 +165,7 @@ class FileManager:
     @staticmethod
     def list_folders(folder) -> List[Path]:
 
-        folder = Path(folder)
+        folder = FileManager._validated_path(folder)
 
         if not folder.exists():
             return []
@@ -154,7 +183,7 @@ class FileManager:
     @staticmethod
     def size(path):
 
-        path = Path(path)
+        path = FileManager._validated_path(path)
 
         if path.is_file():
             return path.stat().st_size

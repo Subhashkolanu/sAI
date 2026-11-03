@@ -20,7 +20,7 @@ import speech_recognition as sr
 import pyttsx3
 import edge_tts
 
-from config import (
+from backend.config import (
     VOICE_RATE,
     VOICE_VOLUME,
     MIC_TIMEOUT,
@@ -99,7 +99,10 @@ class SpeechEngine:
 
         await communicate.save(filename)
 
-        os.system(f'"{filename}"')
+        if not hasattr(os, "startfile"):
+            raise RuntimeError("Edge TTS playback is only supported on Windows.")
+
+        os.startfile(filename)
 
     # -------------------------------------------------
 

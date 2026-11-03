@@ -15,7 +15,7 @@ import socket
 import sys
 from pathlib import Path
 
-from config import (
+from backend.config import (
     ASSISTANT_NAME,
     VERSION,
     DATA_DIR,

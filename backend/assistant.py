@@ -28,6 +28,7 @@ class Assistant:
         self.search = FileSearch()
 
         self.chat_history = []
+        self.pending_action = None
 
     # --------------------------------------------------
     # HISTORY
@@ -145,6 +146,14 @@ class Assistant:
 
         return None
 
+    def identity(self, prompt):
+        if prompt.lower().strip() in {"what is sai?", "what is sai", "who are you?", "who are you"}:
+            return (
+                "I am sAI — Scalable AI Interface. I am a free, local-first "
+                "desktop AI assistant: simple AI for everyone, without charge."
+            )
+        return None
+
     # --------------------------------------------------
     # FILE SEARCH
     # --------------------------------------------------
@@ -216,11 +225,10 @@ class Assistant:
 
             if any(pattern in text for pattern in patterns):
 
-                if DesktopController.open_website(url):
-
-                    return f"Opening {site.title()}..."
-
-                return f"Unable to open {site.title()}."
+                return self.request_approval(
+                    f"open {site.title()}",
+                    lambda: DesktopController.open_website(url),
+                )
 
         # ----------------------------------------------
         # Folders
@@ -246,11 +254,10 @@ class Assistant:
 
             if any(pattern in text for pattern in patterns):
 
-                if DesktopController.open_folder(folder):
-
-                    return f"Opening {folder.title()}..."
-
-                return f"Unable to open {folder.title()}."
+                return self.request_approval(
+                    f"open the {folder.title()} folder",
+                    lambda: DesktopController.open_folder(folder),
+                )
 
         # ----------------------------------------------
         # Drives
@@ -265,11 +272,10 @@ class Assistant:
 
             letter = drive_match.group(1)
 
-            if DesktopController.open_drive(letter):
-
-                return f"Opening {letter.upper()}: drive..."
-
-            return f"{letter.upper()}: drive not found."
+            return self.request_approval(
+                f"open the {letter.upper()}: drive",
+                lambda: DesktopController.open_drive(letter),
+            )
 
         # ----------------------------------------------
         # Applications
@@ -307,16 +313,36 @@ class Assistant:
 
                 if any(pattern in text for pattern in patterns):
 
-                    if DesktopController.open_app(app):
-
-                        return f"Opening {app.title()}..."
-
-                    return (
-                        f"{app.title()} is not installed "
-                        "or could not be opened."
+                    return self.request_approval(
+                        f"launch {app.title()}",
+                        lambda: DesktopController.open_app(app),
                     )
 
         return None
+
+    def request_approval(self, description, action):
+        self.pending_action = (description, action)
+        return (
+            f"Approval required to {description}. "
+            "Reply 'approve' to continue or 'deny' to cancel."
+        )
+
+    def resolve_approval(self, prompt):
+        decision = prompt.lower().strip()
+
+        if decision not in {"approve", "deny", "cancel"} or self.pending_action is None:
+            return None
+
+        description, action = self.pending_action
+        self.pending_action = None
+
+        if decision in {"deny", "cancel"}:
+            return f"Cancelled: {description}."
+
+        if action():
+            return f"Completed: {description}."
+
+        return f"Unable to complete: {description}."
 
     # --------------------------------------------------
     # MAIN RESPONSE ROUTER
@@ -329,6 +355,15 @@ class Assistant:
         if not prompt:
 
             return "Please enter a message."
+
+        approval_result = self.resolve_approval(prompt)
+
+        if approval_result:
+            self.memory.add("user", prompt)
+            self.memory.add("assistant", approval_result)
+            self.add_history("user", prompt)
+            self.add_history("assistant", approval_result)
+            return approval_result
 
         # ----------------------------------------------
         # Store user message
@@ -349,6 +384,7 @@ class Assistant:
         # ----------------------------------------------
 
         for handler in (
+            self.identity,
             self.personal_memory,
             self.file_search,
             self.desktop,
@@ -382,7 +418,7 @@ class Assistant:
 
         try:
 
-            response = self.llm.generate(prompt)
+            response = self.llm.generate(prompt, history=self.chat_history[:-1])
 
         except Exception as e:
 
@@ -399,6 +435,9 @@ class Assistant:
         )
 
         return response
+
+    def close(self):
+        self.memory.close()
 
 
 # ------------------------------------------------------

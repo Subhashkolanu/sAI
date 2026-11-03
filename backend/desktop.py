@@ -63,18 +63,6 @@ class DesktopController:
             "explorer",
         ],
 
-        "cmd": [
-            "cmd",
-        ],
-
-        "powershell": [
-            "powershell",
-        ],
-
-        "terminal": [
-            "wt",
-        ],
-
         "word": [
             "winword",
         ],
@@ -116,8 +104,6 @@ class DesktopController:
 
         "file explorer": "explorer",
         "windows explorer": "explorer",
-
-        "windows terminal": "terminal",
 
         "ms word": "word",
         "microsoft word": "word",
@@ -198,23 +184,6 @@ class DesktopController:
 
                 except Exception:
                     pass
-
-            # ------------------------------------------
-            # Windows shell fallback
-            # ------------------------------------------
-
-            try:
-
-                subprocess.Popen(
-                    ["cmd", "/c", "start", "", app],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-
-                return True
-
-            except Exception:
-                pass
 
         return False
 

@@ -12,7 +12,6 @@ import threading
 
 import customtkinter as ctk
 
-from backend.vision import Vision
 
 
 class VisionPage(ctk.CTkFrame):
@@ -21,11 +20,19 @@ class VisionPage(ctk.CTkFrame):
 
         super().__init__(master)
 
-        self.vision = Vision()
+        self.vision = None
+        self.unavailable_reason = None
+        try:
+            from backend.vision import Vision
+            self.vision = Vision()
+        except Exception:
+            self.unavailable_reason = "Install requirements-vision.txt to enable vision."
 
         self.last_image = None
 
         self.build_ui()
+        if self.unavailable_reason:
+            self.status.configure(text=self.unavailable_reason)
 
     # --------------------------------------------------
 
@@ -96,6 +103,10 @@ class VisionPage(ctk.CTkFrame):
 
     def take_photo(self):
 
+        if self.vision is None:
+            self.log(self.unavailable_reason)
+            return
+
         try:
 
             image = self.vision.take_photo()
@@ -111,6 +122,10 @@ class VisionPage(ctk.CTkFrame):
     # --------------------------------------------------
 
     def open_camera(self):
+
+        if self.vision is None:
+            self.log(self.unavailable_reason)
+            return
 
         threading.Thread(
             target=self.vision.preview,
