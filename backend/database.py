@@ -34,7 +34,10 @@ class Database:
         self.connection = sqlite3.connect(
             self.db_path,
             check_same_thread=False,
+            timeout=5.0,
         )
+
+        self.connection.execute("PRAGMA busy_timeout = 5000")
 
         self.connection.row_factory = sqlite3.Row
 
@@ -176,8 +179,8 @@ class Database:
     # -------------------------------------------------
 
     def close(self):
-
-        self.connection.close()
+        with self.lock:
+            self.connection.close()
 
 
 database = Database()

@@ -16,21 +16,29 @@ import threading
 import customtkinter as ctk
 
 from backend.assistant import Assistant
-from backend.speech import SpeechEngine
 
 
 class VoicePage(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, assistant=None):
 
         super().__init__(master)
 
-        self.assistant = Assistant()
-        self.engine = SpeechEngine()
+        self.assistant = assistant or Assistant()
+        self.engine = None
+        self.unavailable_reason = None
+        try:
+            from backend.speech import SpeechEngine
+            self.engine = SpeechEngine()
+        except Exception:
+            self.unavailable_reason = "Install requirements-voice.txt to enable voice."
 
         self.listening = False
 
         self.build_ui()
+        if self.unavailable_reason:
+            self.status.configure(text=self.unavailable_reason)
+            self.listen_button.configure(state="disabled")
 
     # --------------------------------------------------
 
@@ -89,6 +97,9 @@ class VoicePage(ctk.CTkFrame):
     # --------------------------------------------------
 
     def start_listening(self):
+
+        if self.engine is None:
+            return
 
         if self.listening:
             return

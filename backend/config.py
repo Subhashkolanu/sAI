@@ -93,6 +93,11 @@ OLLAMA_MODEL = os.getenv(
     "qwen3:4b-instruct-2507-q4_K_M",
 )
 
+OLLAMA_BASE_URL = os.getenv(
+    "OLLAMA_BASE_URL",
+    "http://127.0.0.1:11434",
+)
+
 OPENAI_MODEL = os.getenv(
     "OPENAI_MODEL",
     "gpt-5.5",
@@ -101,6 +106,11 @@ OPENAI_MODEL = os.getenv(
 OPENAI_API_KEY = os.getenv(
     "OPENAI_API_KEY",
     "",
+)
+
+OPENAI_BASE_URL = os.getenv(
+    "OPENAI_BASE_URL",
+    "https://api.openai.com/v1",
 )
 
 SERPAPI_KEY = os.getenv(
