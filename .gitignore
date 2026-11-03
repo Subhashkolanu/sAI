@@ -12,3 +12,5 @@ data/memory/
 data/cache/
 data/logs/
 data/temp/
+data/settings.json
+data/uploads/*
