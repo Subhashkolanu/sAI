@@ -214,7 +214,7 @@ class SetupWizardWorkflowTests(unittest.TestCase):
 
             with patch.object(wizard.model_manager, "is_ollama_running", return_value=True), \
                  patch.object(wizard.model_manager, "discover_ollama_models", return_value=models):
-                
+
                 wizard.finish_setup()
                 time.sleep(0.2)
 
@@ -248,7 +248,7 @@ class SetupWizardWorkflowTests(unittest.TestCase):
 
             with patch.object(wizard.model_manager, "is_ollama_running", return_value=True), \
                  patch.object(wizard.model_manager, "discover_ollama_models", return_value=[ModelInfo("other-model")]):
-                
+
                 wizard.finish_setup()
                 time.sleep(0.2)
 
@@ -328,7 +328,7 @@ class SetupWizardWorkflowTests(unittest.TestCase):
             models = [ModelInfo("qwen3:4b-instruct-2507-q4_K_M", 2500000000)]
             with patch.object(wizard.model_manager, "is_ollama_running", return_value=True), \
                  patch.object(wizard.model_manager, "discover_ollama_models", return_value=models):
-                
+
                 wizard.finish_setup()
                 time.sleep(0.2)
 

@@ -1,12 +1,12 @@
 # sAI v1.0.0 Final Release Validation & Delivery Audit
 
-**Date:** November 4, 2026  
-**Product:** sAI (Scalable AI Interface)  
-**Version:** 1.0.0 (Release Candidate)  
-**Target:** Windows 10 & Windows 11 (64-bit)  
-**Deliverable Installer:** `dist_installer\sAI-Setup-v1.0.0.exe`  
-**SHA-256 Checksum:** `E5C90D7BAC3F6265DA0478C30F29F9DCD9D420D21285C0469E467BBC46DAD9EE`  
-**Size:** 39,026,072 bytes (37.2 MB)  
+**Date:** November 4, 2026
+**Product:** sAI (Scalable AI Interface)
+**Version:** 1.0.0 (Release Candidate)
+**Target:** Windows 10 & Windows 11 (64-bit)
+**Deliverable Installer:** `dist_installer\sAI-Setup-v1.0.0.exe`
+**SHA-256 Checksum:** `E5C90D7BAC3F6265DA0478C30F29F9DCD9D420D21285C0469E467BBC46DAD9EE`
+**Size:** 39,026,072 bytes (37.2 MB)
 
 ---
 
