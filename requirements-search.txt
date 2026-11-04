@@ -1,0 +1,5 @@
+# Optional web-search helper (backend.search). The desktop Search page searches
+# local conversation history and does not require these packages.
+requests>=2.32.0
+beautifulsoup4>=4.12.0
+duckduckgo-search>=8.0.0

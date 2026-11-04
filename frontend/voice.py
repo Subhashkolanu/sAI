@@ -27,18 +27,34 @@ class VoicePage(ctk.CTkFrame):
         self.assistant = assistant or Assistant()
         self.engine = None
         self.unavailable_reason = None
-        try:
-            from backend.speech import SpeechEngine
-            self.engine = SpeechEngine()
-        except Exception:
-            self.unavailable_reason = "Install requirements-voice.txt to enable voice."
-
         self.listening = False
 
         self.build_ui()
-        if self.unavailable_reason:
-            self.status.configure(text=self.unavailable_reason)
-            self.listen_button.configure(state="disabled")
+        self.status.configure(text="Status : Initializing voice...")
+        self.listen_button.configure(state="disabled")
+        threading.Thread(target=self.initialize_engine, daemon=True).start()
+
+    def initialize_engine(self):
+        try:
+            from backend.speech import SpeechEngine
+            engine = SpeechEngine()
+            reason = None
+        except Exception:
+            engine = None
+            reason = "Install requirements-voice.txt to enable voice."
+        try:
+            self.after(0, lambda: self.finish_engine_initialization(engine, reason))
+        except RuntimeError:
+            pass
+
+    def finish_engine_initialization(self, engine, reason):
+        self.engine = engine
+        self.unavailable_reason = reason
+        if reason:
+            self.status.configure(text=reason)
+            return
+        self.status.configure(text="Status : Ready")
+        self.listen_button.configure(state="normal")
 
     # --------------------------------------------------
 

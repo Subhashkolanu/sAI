@@ -8,17 +8,21 @@ Displays conversation history.
 
 from __future__ import annotations
 
+import threading
+
 import customtkinter as ctk
 
 from backend.memory import Memory
 
 
 class MemoryPage(ctk.CTkFrame):
+    HISTORY_BATCH_SIZE = 50
 
-    def __init__(self, master):
+    def __init__(self, master, memory=None):
         super().__init__(master)
 
-        self.memory = Memory()
+        self.memory = memory or Memory()
+        self._load_token = 0
 
         title = ctk.CTkLabel(
             self,
@@ -57,13 +61,40 @@ class MemoryPage(ctk.CTkFrame):
             width=150,
         ).grid(row=0, column=1, padx=10)
 
-        self.load_history()
-
     def load_history(self):
+        self._load_token += 1
+        token = self._load_token
 
         self.text.delete("1.0", "end")
+        self.text.insert("end", "Loading conversation history...")
+        threading.Thread(
+            target=self._fetch_history,
+            args=(token,),
+            daemon=True,
+        ).start()
 
-        history = self.memory.all()
+    def _fetch_history(self, token):
+        try:
+            history = self.memory.all()
+            callback = lambda: self._begin_history_render(history, token)
+        except Exception as exc:
+            callback = lambda: self._show_history_error(str(exc), token)
+        try:
+            self.after(0, callback)
+        except RuntimeError:
+            pass
+
+    def _show_history_error(self, error, token):
+        if token != self._load_token:
+            return
+        self.text.delete("1.0", "end")
+        self.text.insert("end", f"Unable to load conversation history: {error}")
+
+    def _begin_history_render(self, history, token):
+        if token != self._load_token:
+            return
+
+        self.text.delete("1.0", "end")
 
         if not history:
             self.text.insert(
@@ -72,15 +103,24 @@ class MemoryPage(ctk.CTkFrame):
             )
             return
 
-        for item in history:
+        self._render_history_batch(history, 0, token)
+
+    def _render_history_batch(self, history, start, token):
+        if token != self._load_token:
+            return
+        for item in history[start:start + self.HISTORY_BATCH_SIZE]:
             self.text.insert(
                 "end",
                 f"[{item['timestamp']}]\n"
                 f"{item['role'].upper()}\n"
                 f"{item['message']}\n\n"
             )
+        next_start = start + self.HISTORY_BATCH_SIZE
+        if next_start < len(history):
+            self.after(1, lambda: self._render_history_batch(history, next_start, token))
 
     def clear_memory(self):
+        self._load_token += 1
         self.memory.clear()
         self.load_history()
 

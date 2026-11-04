@@ -39,14 +39,20 @@ class ModelManager:
             if item.get("name")
         ]
 
+    @staticmethod
+    def validate_ollama_model(name: str, models: list[ModelInfo]) -> str:
+        selected = name.strip()
+        if not selected or selected not in {model.name for model in models}:
+            raise ValueError("Select a model discovered from the connected Ollama service.")
+        return selected
+
     def select_ollama_model(self, name: str, assistant=None, models: list[ModelInfo] | None = None):
         available = models if models is not None else self.discover_ollama_models()
-        if name not in {model.name for model in available}:
-            raise ValueError("Select a model discovered from the connected Ollama service.")
-        self.settings.update(ollama_model=name)
+        selected = self.validate_ollama_model(name, available)
+        self.settings.update(ollama_model=selected)
         self.settings.save()
         if assistant is not None:
-            assistant.llm.settings.update(ollama_model=name)
+            assistant.llm.settings.update(ollama_model=selected)
             assistant.llm.settings.save()
 
     def validate_openai_compatible(self) -> str:

@@ -21,13 +21,24 @@ class Sidebar(ctk.CTkFrame):
             ("ℹ About", "about"),
         ]
         for text, page in menu:
-            button = ctk.CTkButton(self, text=text, height=40, command=lambda name=page: self.change_page(name))
+            is_voice = page == "voice"
+            button_text = f"{text} (Disabled)" if is_voice else text
+            button_state = "disabled" if is_voice else "normal"
+            button = ctk.CTkButton(
+                self,
+                text=button_text,
+                height=40,
+                state=button_state,
+                command=lambda name=page: self.change_page(name),
+            )
             button.pack(fill="x", padx=15, pady=6)
             self.buttons[page] = button
         ctk.CTkLabel(self, text="").pack(expand=True, fill="both")
         ctk.CTkLabel(self, text="Version 1.0.0", font=("Segoe UI", 11)).pack(pady=15)
 
     def change_page(self, page):
+        if page == "voice":
+            return
         if self.callback:
             self.callback(page)
 
@@ -35,7 +46,9 @@ class Sidebar(ctk.CTkFrame):
         for button in self.buttons.values(): button.configure(state="disabled")
 
     def enable(self):
-        for button in self.buttons.values(): button.configure(state="normal")
+        for name, button in self.buttons.items():
+            if name != "voice":
+                button.configure(state="normal")
 
     def highlight(self, page):
         for name, button in self.buttons.items():

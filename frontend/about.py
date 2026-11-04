@@ -70,30 +70,28 @@ Current Features
 ----------------
 ✓ Chat Interface
 ✓ SQLite Memory
+✓ Conversation Search
 ✓ Local LLM Support (Ollama)
-✓ OpenAI Support
-✓ Voice Engine
-✓ Vision Engine
-✓ Web Search
-✓ Automation
-✓ File Manager
-✓ Logger
+✓ Optional OpenAI-compatible endpoints
+• Optional Vision feature (Experimental)
 
 Default AI Provider
 -------------------
 {DEFAULT_PROVIDER}
 
-Upcoming Features
------------------
+Upcoming / In Development
+-------------------------
+• Voice Assistant (Deferred to post-v1.0.0)
 • Agentic AI
 • Long-Term Memory
 • Local RAG
+• Web Search UI
 • Plugin System
 • Multi-Agent Support
 • Screen Understanding
 • Smart Automation
 • Android Companion
-• Desktop Control
+• Automation UI
 • AI Workspace
 
 Developer

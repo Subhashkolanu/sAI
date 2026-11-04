@@ -11,9 +11,11 @@ from __future__ import annotations
 import sys
 import time
 import subprocess
+import json
 import urllib.request
 import urllib.error
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 # ---------------------------------------------------------
@@ -44,8 +46,8 @@ from backend.config import (
     ASSISTANT_NAME,
     VERSION,
     HOST,
-    OLLAMA_MODEL,
 )
+from backend.settings import Settings
 
 
 console = Console()
@@ -55,15 +57,15 @@ console = Console()
 # Ollama
 # ---------------------------------------------------------
 
-OLLAMA_URL = "http://127.0.0.1:11434"
+DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 
 
-def ollama_running() -> bool:
+def ollama_running(base_url: str) -> bool:
 
     try:
 
         request = urllib.request.Request(
-            f"{OLLAMA_URL}/api/tags",
+            f"{base_url.rstrip('/')}/api/tags",
             method="GET",
         )
 
@@ -82,12 +84,12 @@ def ollama_running() -> bool:
 # ---------------------------------------------------------
 
 
-def model_available() -> bool:
+def model_available(base_url: str, model: str) -> bool:
 
     try:
 
         request = urllib.request.Request(
-            f"{OLLAMA_URL}/api/tags",
+            f"{base_url.rstrip('/')}/api/tags",
             method="GET",
         )
 
@@ -95,10 +97,13 @@ def model_available() -> bool:
             request,
             timeout=3,
         ) as response:
+            data = json.loads(response.read().decode("utf-8"))
 
-            data = response.read().decode("utf-8")
-
-        return OLLAMA_MODEL in data
+        return model in {
+            item.get("name")
+            for item in data.get("models", [])
+            if item.get("name")
+        }
 
     except Exception:
 
@@ -108,7 +113,14 @@ def model_available() -> bool:
 # ---------------------------------------------------------
 
 
-def start_ollama() -> bool:
+def start_ollama(base_url: str) -> bool:
+
+    if base_url.rstrip("/") != DEFAULT_OLLAMA_URL:
+        console.print(
+            "[red]The configured Ollama endpoint is not running.[/red]\n"
+            "Start the configured Ollama service manually, then try again."
+        )
+        return False
 
     console.print(
         "[yellow]Ollama is not running. Starting Ollama...[/yellow]"
@@ -143,7 +155,7 @@ def start_ollama() -> bool:
 
     for _ in range(15):
 
-        if ollama_running():
+        if ollama_running(base_url):
 
             console.print(
                 "[green]Ollama is ready.[/green]"
@@ -163,11 +175,11 @@ def start_ollama() -> bool:
 # ---------------------------------------------------------
 
 
-def ensure_ollama() -> bool:
+def ensure_ollama(base_url: str, model: str) -> bool:
 
-    if not ollama_running():
+    if not ollama_running(base_url):
 
-        if not start_ollama():
+        if not start_ollama(base_url):
 
             return False
 
@@ -179,23 +191,47 @@ def ensure_ollama() -> bool:
 
     # Check model
 
-    if not model_available():
+    if not model_available(base_url, model):
 
         console.print(
-            f"\n[red]Model not found:[/red] {OLLAMA_MODEL}"
+            f"\n[red]Model not found:[/red] {model}"
         )
 
         console.print(
-            f"[yellow]Run:[/yellow] ollama pull {OLLAMA_MODEL}"
+            f"[yellow]Run:[/yellow] ollama pull {model}"
         )
 
         return False
 
     console.print(
-        f"[green]Model ready:[/green] {OLLAMA_MODEL}"
+        f"[green]Model ready:[/green] {model}"
     )
 
     return True
+
+
+def ensure_provider(settings: Settings) -> bool:
+    """Preflight only the provider selected in persistent settings."""
+    config = settings.llm_config()
+    provider = config["provider"]
+
+    if provider == "ollama":
+        return ensure_ollama(config["ollama_base_url"], config["ollama_model"])
+
+    if provider == "openai_compatible":
+        endpoint = config["openai_base_url"]
+        parsed = urlparse(endpoint)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            console.print("[red]Invalid OpenAI-compatible endpoint in Settings.[/red]")
+            return False
+        console.print(
+            "[green]OpenAI-compatible provider configured:[/green] "
+            f"{endpoint} (model: {config['openai_model']})"
+        )
+        return True
+
+    console.print(f"[red]Unknown configured provider:[/red] {provider}")
+    return False
 
 
 # ---------------------------------------------------------
@@ -272,11 +308,11 @@ def main():
         "\n[bold]Checking AI engine...[/bold]"
     )
 
-    if not ensure_ollama():
+    if not ensure_provider(Settings()):
 
         console.print(
-            "\n[red]sAI cannot start until Ollama "
-            "is ready.[/red]"
+            "\n[red]sAI cannot start until the selected provider "
+            "is configured.[/red]"
         )
 
         input("\nPress Enter to exit...")

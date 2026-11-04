@@ -67,7 +67,9 @@ class OpenAICompatibleProvider:
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"].strip()
         except (httpx.HTTPError, KeyError, IndexError, TypeError) as exc:
-            raise RuntimeError("OpenAI-compatible provider request failed.") from exc
+            raise RuntimeError(
+                f"OpenAI-compatible provider request to {endpoint} failed: {exc}"
+            ) from exc
 
 
 class ProviderFactory:

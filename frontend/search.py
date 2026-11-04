@@ -15,10 +15,10 @@ from backend.memory import Memory
 
 class SearchPage(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, memory=None):
         super().__init__(master)
 
-        self.memory = Memory()
+        self.memory = memory or Memory()
 
         title = ctk.CTkLabel(
             self,

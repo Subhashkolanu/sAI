@@ -5,3 +5,4 @@
 # pip install -r requirements-voice.txt
 # pip install -r requirements-vision.txt
 # pip install -r requirements-documents.txt
+# pip install -r requirements-search.txt

@@ -153,15 +153,36 @@ class SettingsPage(ctk.CTkFrame):
             self.after(0, lambda: self.status.configure(text=str(exc)))
 
     def save(self):
+        values = {
+            "provider": self.provider.get(),
+            "ollama_model": self.model.get().strip(),
+            "openai_model": self.openai_model.get().strip(),
+            "openai_base_url": self.endpoint.get().strip(),
+            "theme": self.theme.get(),
+        }
+        if values["provider"] == "ollama":
+            self.status.configure(text="Validating the selected Ollama model...")
+            threading.Thread(target=self._validate_and_save_ollama, args=(values,), daemon=True).start()
+            return
+        self._save_values(values)
+
+    def _validate_and_save_ollama(self, values):
         try:
-            self.settings.update(
-                provider=self.provider.get(),
-                ollama_model=self.model.get().strip(),
-                openai_model=self.openai_model.get().strip(),
-                openai_base_url=self.endpoint.get().strip(),
-                theme=self.theme.get(),
+            models = self.model_manager.discover_ollama_models()
+            values["ollama_model"] = self.model_manager.validate_ollama_model(
+                values["ollama_model"], models
             )
+        except (RuntimeError, ValueError) as exc:
+            self.after(0, lambda: self.status.configure(text=str(exc)))
+            return
+        self.after(0, lambda: self._save_values(values))
+
+    def _save_values(self, values):
+        try:
+            self.settings.update(**values)
             self.settings.save()
+            if self.assistant is not None:
+                self.assistant.llm.settings.data = self.settings.llm_config()
             self.status.configure(text="Settings saved. New chats use these settings.")
             if self.on_save:
                 self.on_save()

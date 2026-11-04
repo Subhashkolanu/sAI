@@ -59,9 +59,9 @@ Features:
 • Chat Interface
 • Local LLM Support
 • Memory
-• Voice (Upcoming)
-• Vision (Upcoming)
-• Automation (Upcoming)
+• Conversation Search
+• Optional Vision (Experimental)
+• Voice Assistant (Upcoming)
 """,
                 title="About",
                 border_style="green",

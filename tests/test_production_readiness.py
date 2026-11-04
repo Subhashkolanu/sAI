@@ -157,6 +157,12 @@ class ProviderTests(unittest.TestCase):
             OpenAICompatibleProvider("http://localhost:8080/v1", "local", 0.2, 100).generate("hello")
         self.assertEqual(post.call_args.kwargs["json"]["messages"][0]["content"], SYSTEM_PROMPT)
 
+    @patch("backend.providers.httpx.post", side_effect=httpx.ConnectError("offline"))
+    def test_openai_compatible_connection_error_identifies_endpoint(self, post):
+        provider = OpenAICompatibleProvider("http://127.0.0.1:8080/v1", "local", 0.2, 100)
+        with self.assertRaisesRegex(RuntimeError, "127.0.0.1:8080/v1/chat/completions"):
+            provider.generate("hello")
+
 
 class ModelManagerTests(unittest.TestCase):
     @patch("backend.model_manager.httpx.get")
@@ -193,6 +199,10 @@ class ModelManagerTests(unittest.TestCase):
         manager = ModelManager(Settings(Path(tempfile.gettempdir()) / "unused-settings.json"))
         with self.assertRaises(ValueError):
             manager.select_ollama_model("missing", models=[])
+
+    def test_typed_model_validation_rejects_unknown_model(self):
+        with self.assertRaises(ValueError):
+            ModelManager.validate_ollama_model("typo", [ModelInfo("local")])
 
     @patch("backend.model_manager.httpx.get", side_effect=httpx.ConnectError("offline"))
     def test_invalid_openai_compatible_endpoint_reports_error(self, get):
@@ -250,3 +260,244 @@ class UIRuntimeCallbackTests(unittest.TestCase):
         previous.grid_remove.assert_called_once()
         target.grid.assert_called_once()
         app.sidebar.highlight.assert_called_once_with("chat")
+
+    def test_chat_first_startup_defers_optional_and_data_pages(self):
+        from frontend.app import SAIApp
+        chat = MagicMock()
+        voice_page = MagicMock()
+        memory_page = MagicMock()
+        search_page = MagicMock()
+        page = MagicMock()
+        vision = MagicMock(return_value=page)
+        with patch("frontend.app.ChatPanel", return_value=chat), \
+             patch("frontend.app.VoicePage", return_value=voice_page) as voice, \
+             patch("frontend.app.MemoryPage", return_value=memory_page) as memory, \
+             patch("frontend.app.SearchPage", return_value=search_page) as search, \
+             patch("frontend.app.SettingsPage", return_value=MagicMock()), \
+             patch("frontend.app.AboutPage", return_value=MagicMock()), \
+             patch("frontend.app.VisionPage", vision):
+            app = SimpleNamespace(container=MagicMock(), assistant=MagicMock(), settings=MagicMock(), apply_settings=MagicMock())
+            SAIApp.create_pages(app)
+            vision.assert_not_called()
+            voice.assert_not_called()
+            memory.assert_not_called()
+            search.assert_not_called()
+            self.assertNotIn("vision", app.pages)
+            self.assertNotIn("voice", app.pages)
+            self.assertNotIn("memory", app.pages)
+            self.assertNotIn("search", app.pages)
+            self.assertEqual(set(app.page_factories), {"voice", "vision", "memory", "search"})
+
+            app.page_factories["memory"]()
+
+        memory.assert_called_once_with(app.container, memory=app.assistant.memory)
+
+    def test_deferred_page_navigation_keeps_sidebar_flow(self):
+        from frontend.app import SAIApp
+        page = MagicMock()
+        app = SimpleNamespace(
+            container=MagicMock(),
+            assistant=MagicMock(),
+            pages={},
+            page_factories={"memory": lambda: page},
+            current_page=MagicMock(),
+            sidebar=MagicMock(),
+        )
+
+        SAIApp.change_page(app, "memory")
+
+        self.assertIs(app.current_page, page)
+        app.sidebar.highlight.assert_called_once_with("memory")
+
+    def test_voice_sidebar_navigation_is_disabled_in_release_ui(self):
+        from frontend.sidebar import Sidebar
+        callback = MagicMock()
+        sidebar = Sidebar.__new__(Sidebar)
+        sidebar.callback = callback
+        voice_btn = MagicMock()
+        other_btn = MagicMock()
+        sidebar.buttons = {"voice": voice_btn, "chat": other_btn}
+
+        sidebar.change_page("voice")
+        callback.assert_not_called()
+
+        sidebar.enable()
+        other_btn.configure.assert_called_once_with(state="normal")
+        voice_btn.configure.assert_not_called()
+
+    def test_change_page_voice_does_not_initialize_voice_page(self):
+        from frontend.app import SAIApp
+        voice_factory = MagicMock()
+        current = MagicMock()
+        app = SimpleNamespace(
+            pages={},
+            page_factories={"voice": voice_factory},
+            current_page=current,
+            sidebar=MagicMock(),
+        )
+
+        SAIApp.change_page(app, "voice")
+
+        voice_factory.assert_not_called()
+        self.assertIs(app.current_page, current)
+
+
+class SettingsSaveTests(unittest.TestCase):
+    def test_invalid_typed_ollama_model_is_not_persisted(self):
+        from frontend.settings import SettingsPage
+        with tempfile.TemporaryDirectory() as directory:
+            settings = Settings(Path(directory) / "settings.json")
+            original = settings.get("ollama_model")
+            status = MagicMock()
+            page = SimpleNamespace(
+                settings=settings,
+                status=status,
+                model_manager=MagicMock(),
+            )
+            page.model_manager.discover_ollama_models.return_value = [ModelInfo("installed")]
+            page.model_manager.validate_ollama_model.side_effect = ValueError("invalid model")
+            page.after = lambda _delay, callback: callback()
+
+            SettingsPage._validate_and_save_ollama(page, {"ollama_model": "typo"})
+
+            self.assertEqual(settings.get("ollama_model"), original)
+            status.configure.assert_called_with(text="invalid model")
+
+    def test_validated_model_is_saved_after_discovery(self):
+        from frontend.settings import SettingsPage
+        saved = []
+        page = SimpleNamespace(status=MagicMock(), model_manager=MagicMock())
+        page.model_manager.discover_ollama_models.return_value = [ModelInfo("installed")]
+        page.model_manager.validate_ollama_model.return_value = "installed"
+        page.after = lambda _delay, callback: callback()
+        page._save_values = lambda values: saved.append(values.copy())
+
+        SettingsPage._validate_and_save_ollama(page, {"ollama_model": "installed"})
+
+        self.assertEqual(saved, [{"ollama_model": "installed"}])
+
+
+class DeferredMemoryTests(unittest.TestCase):
+    def test_history_query_is_deferred_until_requested(self):
+        from frontend.memory import MemoryPage
+        memory = MagicMock()
+        page = MemoryPage.__new__(MemoryPage)
+        page.memory = memory
+        page.text = MagicMock()
+        page._load_token = 0
+        thread = MagicMock()
+        with patch("frontend.memory.threading.Thread", return_value=thread):
+            MemoryPage.load_history(page)
+
+        memory.all.assert_not_called()
+        thread.start.assert_called_once()
+        self.assertIn("Loading conversation history...", str(page.text.insert.call_args))
+
+    def test_requested_history_renders_in_after_batches(self):
+        from frontend.memory import MemoryPage
+        history = [
+            {"timestamp": "2026-11-04T10:00:00", "role": "user", "message": f"message {index}"}
+            for index in range(55)
+        ]
+        page = MemoryPage.__new__(MemoryPage)
+        page.memory = MagicMock()
+        page.text = MagicMock()
+        page._load_token = 1
+        scheduled_delays = []
+
+        def run_after(delay, callback):
+            scheduled_delays.append(delay)
+            callback()
+
+        page.after = run_after
+        MemoryPage._begin_history_render(page, history, 1)
+
+        rendered = "".join(
+            call.args[1] for call in page.text.insert.call_args_list if len(call.args) > 1
+        )
+        self.assertIn("message 0", rendered)
+        self.assertIn("message 54", rendered)
+        self.assertIn(1, scheduled_delays)
+
+    def test_shared_assistant_memory_is_used_by_memory_and_search_factories(self):
+        from frontend.app import SAIApp
+        shared_memory = MagicMock()
+        assistant = SimpleNamespace(memory=shared_memory)
+        memory_page, search_page = MagicMock(), MagicMock()
+        app = SimpleNamespace(
+            container=MagicMock(),
+            assistant=assistant,
+            settings=MagicMock(),
+            apply_settings=MagicMock(),
+        )
+        with patch("frontend.app.ChatPanel"), \
+             patch("frontend.app.SettingsPage"), \
+             patch("frontend.app.AboutPage"), \
+             patch("frontend.app.MemoryPage", return_value=memory_page) as memory, \
+             patch("frontend.app.SearchPage", return_value=search_page) as search:
+            SAIApp.create_pages(app)
+            app.page_factories["memory"]()
+            app.page_factories["search"]()
+
+        memory.assert_called_once_with(app.container, memory=shared_memory)
+        search.assert_called_once_with(app.container, memory=shared_memory)
+
+
+class VoiceInitializationTests(unittest.TestCase):
+    def test_voice_engine_completion_enables_existing_voice_controls(self):
+        from frontend.voice import VoicePage
+        page = VoicePage.__new__(VoicePage)
+        page.status = MagicMock()
+        page.listen_button = MagicMock()
+        engine = MagicMock()
+
+        VoicePage.finish_engine_initialization(page, engine, None)
+
+        self.assertIs(page.engine, engine)
+        self.assertIsNone(page.unavailable_reason)
+        page.listen_button.configure.assert_called_once_with(state="normal")
+
+    def test_voice_engine_failure_keeps_listening_disabled(self):
+        from frontend.voice import VoicePage
+        page = VoicePage.__new__(VoicePage)
+        page.status = MagicMock()
+        page.listen_button = MagicMock()
+
+        VoicePage.finish_engine_initialization(page, None, "Install requirements-voice.txt to enable voice.")
+
+        self.assertIsNone(page.engine)
+        page.listen_button.configure.assert_not_called()
+
+
+class LauncherTests(unittest.TestCase):
+    def test_launcher_uses_selected_ollama_settings(self):
+        import run
+        settings = SimpleNamespace(llm_config=lambda: {
+            "provider": "ollama",
+            "ollama_base_url": "http://127.0.0.1:11435",
+            "ollama_model": "selected-model",
+        })
+        with patch("run.ensure_ollama", return_value=True) as ensure_ollama:
+            self.assertTrue(run.ensure_provider(settings))
+        ensure_ollama.assert_called_once_with("http://127.0.0.1:11435", "selected-model")
+
+    def test_launcher_does_not_require_ollama_for_openai_compatible_settings(self):
+        import run
+        settings = SimpleNamespace(llm_config=lambda: {
+            "provider": "openai_compatible",
+            "openai_base_url": "http://127.0.0.1:8080/v1",
+            "openai_model": "local-model",
+        })
+        with patch("run.ensure_ollama") as ensure_ollama:
+            self.assertTrue(run.ensure_provider(settings))
+        ensure_ollama.assert_not_called()
+
+
+class PackagingDocumentationTests(unittest.TestCase):
+    def test_web_search_dependencies_are_optional_and_documented(self):
+        root = Path(__file__).resolve().parents[1]
+        requirements = (root / "requirements-search.txt").read_text(encoding="utf-8")
+        self.assertIn("requests", requirements)
+        self.assertIn("beautifulsoup4", requirements)
+        self.assertIn("duckduckgo-search", requirements)
+        self.assertIn("WINDOWS_INSTALLATION.md", (root / "README.md").read_text(encoding="utf-8"))

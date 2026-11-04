@@ -37,22 +37,31 @@ class SAIApp(ctk.CTk):
         self.container.grid_columnconfigure(0, weight=1)
         self.create_pages()
         self.current_page = None
+        self.pages["chat"].status.configure(text="Starting sAI...")
         self.change_page("chat")
+        self.after(0, self.finish_startup)
 
     def create_pages(self):
         self.pages = {
             "chat": ChatPanel(self.container, assistant=self.assistant),
-            "voice": VoicePage(self.container, assistant=self.assistant),
-            "vision": VisionPage(self.container),
-            "memory": MemoryPage(self.container),
-            "search": SearchPage(self.container),
             "settings": SettingsPage(self.container, settings=self.settings, assistant=self.assistant, on_save=self.apply_settings),
             "about": AboutPage(self.container),
+        }
+        self.page_factories = {
+            "voice": lambda: VoicePage(self.container, assistant=self.assistant),
+            "vision": lambda: VisionPage(self.container),
+            "memory": lambda: MemoryPage(self.container, memory=self.assistant.memory),
+            "search": lambda: SearchPage(self.container, memory=self.assistant.memory),
         }
         for page in self.pages.values():
             page.grid(row=0, column=0, sticky="nsew")
 
     def change_page(self, page_name: str):
+        if page_name == "voice":
+            return
+        if page_name not in self.pages and page_name in self.page_factories:
+            self.pages[page_name] = self.page_factories[page_name]()
+            self.pages[page_name].grid(row=0, column=0, sticky="nsew")
         if page_name not in self.pages:
             return
         if self.current_page is not None:
@@ -62,6 +71,9 @@ class SAIApp(ctk.CTk):
         self.sidebar.highlight(page_name)
         if hasattr(self.current_page, "load_history"):
             self.current_page.load_history()
+
+    def finish_startup(self):
+        self.pages["chat"].status.configure(text="Ready")
 
     def apply_settings(self):
         self.assistant.llm.settings.data = self.settings.llm_config()
