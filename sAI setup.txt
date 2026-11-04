@@ -1,0 +1,34 @@
+sAI V1.0.0:
+https://github.com/Subhashkolanu/sAI/releases/tag/V1.0.0
+
+REQUIRED DOWNLOADS
+------------------
+1. sAI V1.0.0 Windows installer
+
+   https://github.com/Subhashkolanu/sAI/releases/tag/V1.0.0
+   Download the Windows .exe installer from the release Assets.
+   Confirm the exact asset filename on the release page.
+
+2. Ollama for Windows
+
+   https://ollama.com/download
+
+
+After installation verify installation with OLLAMA command in cmd : ollama 
+-----------------
+REQUIREMENTS : 
+
+- Windows 10 version 22H2 or newer, or Windows 11
+- Ollama installed
+- At least one Ollama model downloaded
+- sAI V1.0.0 installer
+- Internet connection for downloading the installer and model
+- Enough free disk space for the selected model
+
+Hardware guidance:
+- 8 GB RAM: start with a small model; close other applications.
+- 16 GB RAM: more room for small and medium quantized models.
+- GPU: optional; compatible GPU acceleration may improve speed.
+- SSD: recommended for faster loading.
+- No single model is guaranteed to run smoothly on every PC. Actual speed
+  depends on RAM, GPU/VRAM, CPU, model size, quantization, and other apps.
