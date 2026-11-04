@@ -19,3 +19,11 @@ build/
 dist/
 dist_installer/
 *.spec.bak
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.sqlite
+*.sqlite3
+Thumbs.db
