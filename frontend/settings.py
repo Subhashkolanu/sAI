@@ -22,7 +22,7 @@ from backend.model_manager import ModelManager
 
 class SettingsPage(ctk.CTkFrame):
 
-    def __init__(self, master, settings=None, assistant=None, on_save=None):
+    def __init__(self, master, settings=None, assistant=None, on_save=None, on_run_setup=None):
 
         super().__init__(master)
 
@@ -31,6 +31,7 @@ class SettingsPage(ctk.CTkFrame):
         self.model_manager = ModelManager(self.settings)
         self.installed_models = []
         self.on_save = on_save
+        self.on_run_setup = on_run_setup
 
         self.build_ui()
 
@@ -97,7 +98,16 @@ class SettingsPage(ctk.CTkFrame):
         self.status = ctk.CTkLabel(self, text="API keys remain in environment variables.")
         self.status.pack(pady=5)
         ctk.CTkButton(self, text="Test connection", command=self.test_connection).pack(pady=(0, 5))
-        ctk.CTkButton(self, text="Save Settings", command=self.save).pack(pady=15)
+        ctk.CTkButton(self, text="Save Settings", command=self.save).pack(pady=10)
+
+        if self.on_run_setup is not None:
+            ctk.CTkButton(
+                self,
+                text="Run First-Run Setup Wizard",
+                fg_color=("gray70", "gray30"),
+                hover_color=("gray60", "gray40"),
+                command=self.on_run_setup,
+            ).pack(pady=(0, 15))
 
     def refresh_models(self):
         self.status.configure(text="Checking Ollama models...")

@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import sys
+import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 
@@ -16,6 +21,16 @@ class ModelInfo:
     size: int | None = None
     modified_at: str | None = None
 
+    @property
+    def formatted_size(self) -> str:
+        if self.size is None or self.size <= 0:
+            return ""
+        gb = self.size / (1024 ** 3)
+        if gb >= 1.0:
+            return f"{gb:.1f} GB"
+        mb = self.size / (1024 ** 2)
+        return f"{mb:.0f} MB"
+
 
 class ModelManager:
     def __init__(self, settings: Settings | None = None, timeout: float = 5.0):
@@ -25,6 +40,63 @@ class ModelManager:
     @property
     def ollama_url(self) -> str:
         return self.settings.get("ollama_base_url").rstrip("/")
+
+    @staticmethod
+    def find_ollama_binary() -> str | None:
+        """Locates the Ollama executable on the system."""
+        which_path = shutil.which("ollama")
+        if which_path:
+            return which_path
+
+        candidates = [
+            Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe",
+            Path(os.environ.get("PROGRAMFILES", "")) / "Ollama" / "ollama.exe",
+            Path(os.environ.get("ProgramFiles(x86)", "")) / "Ollama" / "ollama.exe",
+        ]
+        for candidate in candidates:
+            try:
+                if candidate.is_file():
+                    return str(candidate)
+            except OSError:
+                continue
+        return None
+
+    def is_ollama_installed(self) -> bool:
+        """Returns True if the Ollama binary was found on the system."""
+        return self.find_ollama_binary() is not None
+
+    def is_ollama_running(self, url: str | None = None) -> bool:
+        """Verifies if the Ollama service responds to HTTP requests."""
+        target_url = (url or self.ollama_url).rstrip("/")
+        try:
+            response = httpx.get(f"{target_url}/api/tags", timeout=2.0)
+            return response.status_code == 200
+        except Exception:
+            return False
+
+    def start_ollama_service(self, wait_timeout: float = 10.0) -> bool:
+        """Attempts to start the Ollama service in the background and waits for it."""
+        binary = self.find_ollama_binary() or "ollama"
+        creation_flags = 0
+        if sys.platform == "win32":
+            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+        try:
+            subprocess.Popen(
+                [binary, "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=creation_flags,
+            )
+        except Exception:
+            return False
+
+        deadline = time.time() + wait_timeout
+        while time.time() < deadline:
+            if self.is_ollama_running():
+                return True
+            time.sleep(0.5)
+        return False
 
     def discover_ollama_models(self) -> list[ModelInfo]:
         try:

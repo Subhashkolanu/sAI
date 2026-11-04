@@ -29,6 +29,23 @@ venv\Scripts\python.exe -m pip install -r requirements-documents.txt
 venv\Scripts\python.exe -m pip install -r requirements-search.txt
 ```
 
+## First-Run Setup Experience
+
+When sAI launches for the first time (or when settings are not yet configured), the **First-Run Setup Wizard** guides users through initial configuration in four steps:
+
+1. **Welcome:** Overview of sAI's local-first privacy architecture, offline intelligence, and motto ("Simple AI for everyone, without charge").
+2. **AI Engine Detection:** Automatically detects whether Ollama is installed and running on your system.
+   - **Running:** Connects immediately to `http://127.0.0.1:11434` and displays a green confirmation.
+   - **Stopped:** If Ollama is detected on disk but not responding, provides a one-click **Start Ollama Service** button and a retry option.
+   - **Missing:** If Ollama is not installed, displays an official download button opening `https://ollama.com/download` with simple instructions to install and click **Check Again**.
+   - **Alternative:** Supports connecting to an OpenAI-compatible local server (such as LM Studio, vLLM, or llama.cpp) by checking the advanced toggle.
+3. **Model Selection:** Discovers installed models and allows selection from a dropdown.
+   - Displays model name, formatted memory size (e.g. `2.5 GB`), and modification date.
+   - If no models are installed, displays clear pull guidance with a **Copy Command** button (`ollama pull qwen3:4b-instruct-2507-q4_K_M`) and a **Refresh Models** button. (sAI never downloads large model files automatically).
+4. **Ready to Launch:** Verifies the connection and model one final time, persists preferences to `settings.json`, and opens the main chat interface.
+
+The setup wizard runs automatically on first launch and does not repeat on subsequent launches. Users can re-run the wizard at any time via **Settings → Run First-Run Setup Wizard**.
+
 ## Set up Ollama (default local provider)
 
 1. Install Ollama from [ollama.com](https://ollama.com/).
@@ -89,4 +106,26 @@ venv\Scripts\python.exe -m pip check
 
 ## Local data and privacy
 
-sAI stores settings, conversation memory, and optional captures beneath `data\`. These are local runtime files and are ignored by Git. Desktop actions require an explicit `approve` response; `deny` or `cancel` stops the pending action.
+sAI stores settings, conversation memory, and optional captures locally. These are local runtime files and are ignored by Git. Desktop actions require an explicit `approve` response; `deny` or `cancel` stops the pending action.
+
+### User Data Storage Paths
+
+- **Packaged Installation (`.exe`):** User data is stored in the user profile under `%LOCALAPPDATA%\sAI\data`. This ensures sAI can run safely from any directory, including protected paths, without permission issues.
+- **Source Development Mode:** When running directly from source repository via `python run.py`, sAI retains the project-local `data\` directory to preserve developer workflows.
+- **Custom Location Override:** To point sAI to a custom storage location, set the `SAI_DATA_DIR` environment variable before launch:
+  ```powershell
+  $env:SAI_DATA_DIR = "D:\MyData\sAI"
+  venv\Scripts\python.exe run.py
+  ```
+
+### Automatic Legacy Data Migration
+
+When a packaged installation runs for the first time, sAI automatically detects any existing source `data\` directory and safely copies settings, profiles, conversation history, and uploads into `%LOCALAPPDATA%\sAI\data`:
+- **Non-destructive:** Original source data is never modified or deleted.
+- **Conflict-safe:** Existing destination files are never overwritten.
+- **Repeat-safe:** Migration can run multiple times without duplicating or corrupting data.
+- **Security-safe:** `.env` files and credentials are never copied into the application data path.
+
+### Backup Recommendation
+
+Before performing major updates or moving installations, back up your user data directory (`%LOCALAPPDATA%\sAI\data` or local `data\`), particularly `settings.json`, `profile.json`, and the `memory\` folder containing `memory.db`.

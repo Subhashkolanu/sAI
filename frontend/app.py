@@ -11,6 +11,7 @@ from frontend.chat import ChatPanel
 from frontend.memory import MemoryPage
 from frontend.search import SearchPage
 from frontend.settings import SettingsPage
+from frontend.setup_wizard import SetupWizard
 from frontend.sidebar import Sidebar
 from frontend.vision import VisionPage
 from frontend.voice import VoicePage
@@ -37,14 +38,25 @@ class SAIApp(ctk.CTk):
         self.container.grid_columnconfigure(0, weight=1)
         self.create_pages()
         self.current_page = None
-        self.pages["chat"].status.configure(text="Starting sAI...")
-        self.change_page("chat")
-        self.after(0, self.finish_startup)
+        self.setup_wizard = None
+
+        if self.settings.needs_setup():
+            self.show_setup_wizard()
+        else:
+            self.pages["chat"].status.configure(text="Starting sAI...")
+            self.change_page("chat")
+            self.after(0, self.finish_startup)
 
     def create_pages(self):
         self.pages = {
             "chat": ChatPanel(self.container, assistant=self.assistant),
-            "settings": SettingsPage(self.container, settings=self.settings, assistant=self.assistant, on_save=self.apply_settings),
+            "settings": SettingsPage(
+                self.container,
+                settings=self.settings,
+                assistant=self.assistant,
+                on_save=self.apply_settings,
+                on_run_setup=getattr(self, "show_setup_wizard", None),
+            ),
             "about": AboutPage(self.container),
         }
         self.page_factories = {
@@ -55,6 +67,33 @@ class SAIApp(ctk.CTk):
         }
         for page in self.pages.values():
             page.grid(row=0, column=0, sticky="nsew")
+
+    def show_setup_wizard(self):
+        """Displays the first-run onboarding wizard."""
+        self.sidebar.disable()
+        if self.current_page is not None:
+            self.current_page.grid_remove()
+        if self.setup_wizard is not None:
+            self.setup_wizard.destroy()
+        self.setup_wizard = SetupWizard(
+            self.container,
+            settings=self.settings,
+            assistant=self.assistant,
+            on_complete=getattr(self, "finish_first_run_setup", None),
+        )
+        self.setup_wizard.grid(row=0, column=0, sticky="nsew")
+        self.current_page = self.setup_wizard
+
+    def finish_first_run_setup(self):
+        """Callback invoked when setup wizard completes successfully."""
+        if self.setup_wizard is not None:
+            self.setup_wizard.grid_remove()
+            self.setup_wizard.destroy()
+            self.setup_wizard = None
+        self.sidebar.enable()
+        self.apply_settings()
+        self.change_page("chat")
+        self.finish_startup()
 
     def change_page(self, page_name: str):
         if page_name == "voice":

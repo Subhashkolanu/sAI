@@ -4,6 +4,7 @@ sAI is a free, local-first Windows desktop assistant built with Python and Custo
 
 ## What is included in v1
 
+- First-run onboarding setup wizard for non-technical users
 - Local Ollama chat with persistent model selection
 - Optional OpenAI-compatible endpoint support
 - SQLite conversation memory and local conversation search
@@ -14,7 +15,7 @@ Vision/OCR is optional. Voice is experimental and disabled in the v1.0.0 UI pend
 
 ## Quick start on Windows
 
-See [WINDOWS_INSTALLATION.md](WINDOWS_INSTALLATION.md) for the complete setup and troubleshooting guide.
+See [WINDOWS_INSTALLATION.md](WINDOWS_INSTALLATION.md) for the complete setup, first-run wizard details, and troubleshooting guide.
 
 ```powershell
 cd D:\EXTRAS\Projects\sAI
@@ -23,6 +24,8 @@ venv\Scripts\python.exe -m pip install --upgrade pip
 venv\Scripts\python.exe -m pip install -r requirements.txt
 venv\Scripts\python.exe run.py
 ```
+
+On first launch, sAI automatically opens the **First-Run Setup Wizard** to guide you through checking Ollama and selecting an installed model.
 
 For local chat, install Ollama and explicitly download a model you choose, for example:
 
@@ -45,7 +48,7 @@ venv\Scripts\python.exe -m pip install -r requirements-search.txt
 
 ## Privacy
 
-Settings, conversation history, and profile information stay in the local `data` directory, which is ignored by Git. API keys are never stored in settings; if an OpenAI-compatible endpoint needs one, set `OPENAI_API_KEY` in the environment. Choosing an external endpoint sends prompts to that endpoint. Ollama remains the fresh-install default.
+Settings, conversation history, and profile information stay in the local `data` directory (or `%LOCALAPPDATA%\sAI\data` for packaged installations), which is ignored by Git. API keys are never stored in settings; if an OpenAI-compatible endpoint needs one, set `OPENAI_API_KEY` in the environment. Choosing an external endpoint sends prompts to that endpoint. Ollama remains the fresh-install default.
 
 ## Verification
 

@@ -30,6 +30,7 @@ class Settings:
         "temperature": TEMPERATURE,
         "max_tokens": MAX_TOKENS,
         "theme": "dark",
+        "setup_completed": False,
     }
 
     def __init__(self, path: Path | str | None = None):
@@ -47,6 +48,9 @@ class Settings:
 
         data = self.DEFAULTS.copy()
         data.update({key: value for key, value in loaded.items() if key in data})
+        # Existing settings files predating setup_completed are treated as completed
+        if "setup_completed" not in loaded and self.path.exists():
+            data["setup_completed"] = True
         return data
 
     def get(self, key):
@@ -90,6 +94,21 @@ class Settings:
 
         if int(data["max_tokens"]) < 1:
             raise ValueError("Maximum tokens must be positive.")
+
+        if "setup_completed" in data and not isinstance(data["setup_completed"], bool):
+            raise ValueError("setup_completed must be a boolean.")
+
+    def needs_setup(self) -> bool:
+        """Determines if the first-run setup wizard is required."""
+        if not self.path.exists():
+            return True
+        if not self.data.get("setup_completed", False):
+            return True
+        try:
+            self._validate(self.data)
+        except ValueError:
+            return True
+        return False
 
     def llm_config(self):
         return self.data.copy()

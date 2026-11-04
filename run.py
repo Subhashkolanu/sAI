@@ -22,7 +22,10 @@ from urllib.parse import urlparse
 # Project Paths
 # ---------------------------------------------------------
 
-ROOT_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    ROOT_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+else:
+    ROOT_DIR = Path(__file__).resolve().parent
 
 BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
@@ -158,7 +161,7 @@ def start_ollama(base_url: str) -> bool:
         if ollama_running(base_url):
 
             console.print(
-                "[green]Ollama is ready.[/green]"
+                "[green]Ollama started successfully.[/green]"
             )
 
             return True
@@ -166,7 +169,7 @@ def start_ollama(base_url: str) -> bool:
         time.sleep(1)
 
     console.print(
-        "[red]Ollama did not become ready.[/red]"
+        "[red]Timed out waiting for Ollama.[/red]"
     )
 
     return False
@@ -177,28 +180,52 @@ def start_ollama(base_url: str) -> bool:
 
 def ensure_ollama(base_url: str, model: str) -> bool:
 
+    console.print(
+        f"Checking Ollama at [cyan]{base_url}[/cyan]..."
+    )
+
+    # Check service
+
     if not ollama_running(base_url):
 
         if not start_ollama(base_url):
 
             return False
 
-    else:
-
-        console.print(
-            "[green]Ollama is already running.[/green]"
-        )
+    console.print(
+        "[green]Ollama is running.[/green]"
+    )
 
     # Check model
+
+    console.print(
+        f"Checking model [cyan]{model}[/cyan]..."
+    )
+
+    # Give Ollama a moment after starting
+
+    time.sleep(1)
 
     if not model_available(base_url, model):
 
         console.print(
-            f"\n[red]Model not found:[/red] {model}"
+            f"\n[red]Model not ready:[/red] {model}"
         )
 
         console.print(
-            f"[yellow]Run:[/yellow] ollama pull {model}"
+            "[yellow]Waiting 3 seconds and rechecking...[/yellow]"
+        )
+
+        time.sleep(3)
+
+    if not model_available(base_url, model):
+
+        console.print(
+            f"\n[red]Model not found after retry:[/red] {model}"
+        )
+
+        console.print(
+            f"[yellow]Pull the model first:[/yellow] ollama pull {model}"
         )
 
         return False
@@ -208,6 +235,11 @@ def ensure_ollama(base_url: str, model: str) -> bool:
     )
 
     return True
+
+
+# ---------------------------------------------------------
+# Ensure Provider
+# ---------------------------------------------------------
 
 
 def ensure_provider(settings: Settings) -> bool:
@@ -297,6 +329,17 @@ def launch_terminal():
 
 
 def main():
+    from backend.storage import is_packaged_executable
+
+    # In packaged mode or when --gui flag is passed, launch GUI directly
+    if is_packaged_executable() or "--gui" in sys.argv:
+        launch_gui()
+        return
+
+    # In CLI mode when flag is passed
+    if "--cli" in sys.argv or "--terminal" in sys.argv:
+        launch_terminal()
+        return
 
     console.clear()
 

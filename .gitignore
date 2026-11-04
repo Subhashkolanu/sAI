@@ -15,3 +15,7 @@ data/temp/
 data/settings.json
 data/uploads/*
 data/profile.json
+build/
+dist/
+dist_installer/
+*.spec.bak
